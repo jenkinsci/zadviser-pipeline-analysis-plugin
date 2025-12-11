@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+    <f:section title="zAdviser Pipeline Analysis Plugin Configuration">
+        <f:entry title="Username" field="username">
+            <f:textbox />
+        </f:entry>
+
+        <f:entry title="Token" field="token">
+            <f:password />
+        </f:entry>
+
+        <f:entry title="zAdviser URL" field="zAdviserURL">
+            <f:textbox />
+        </f:entry>
+
+        <f:entry title="Team Hash" field="teamHash">
+            <f:password />
+        </f:entry>
+    </f:section>
+</j:jelly>
