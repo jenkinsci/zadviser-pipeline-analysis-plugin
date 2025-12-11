@@ -2,7 +2,7 @@
 # zAdviser Pipeline Analysis Plugin
 
 ## Introduction
-**BMC AMI zAdviser** is a mainframe analytics platform that collects data from 
+**BMC AMI zAdviser Enterprise On-Prem** is a mainframe analytics platform that collects data from 
 development tools, pipelines, and production systems, then applies analytics and machine learning 
 to measure software-delivery performance. zAdviser captures a broad range of metrics to help teams 
 improve quality, velocity, and efficiency — including usage of specific BMC tools and tool functions,
