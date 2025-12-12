@@ -9,7 +9,7 @@
     <relativePath />
   </parent>
 
-  <groupId>com.bmc.jenkins</groupId>
+  <groupId>io.jenkins.plugins</groupId>
   <artifactId>zadviser-pipeline-analysis</artifactId>
   <version>${revision}${changelist}</version>
   <packaging>hpi</packaging>
