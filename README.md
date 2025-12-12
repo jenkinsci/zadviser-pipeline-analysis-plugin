@@ -15,7 +15,7 @@ opportunities.
 
 ## Prerequisites
 The following are required to use this plugin:
-- Jenkins (v2.479.3 or higher)
+- Jenkins (v2.492.3 or higher)
 - Jenkins Pipeline: REST API plugin v2.38 or higher. 
  ```
 Note: This plugin will be installed automatically when you try to install the analysis plugin. However, since there might be some versioning mismatch causing Jenkins to not load properly after a restart, we recommend manually updating the REST API plugin first.
