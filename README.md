@@ -33,6 +33,8 @@ We recommend enabling HTTPS for both zAdviser and your Jenkins instance.
 Steps for zAdviser are mentioned in the product documentation
 ```
 
+> This will only work with pipeline jobs with defined stages. Since freestyle projects have no concepts of stages or steps, those are not supported.
+
 ## Product Assistance
 
 BMC provides assistance to customers with its documentation, the BMC Support website, and via telephone calls with the Customer Support team.
