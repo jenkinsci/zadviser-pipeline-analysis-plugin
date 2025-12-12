@@ -1,7 +1,7 @@
 package com.bmc.jenkins.zadviser.service;
 
 import com.bmc.jenkins.zadviser.exceptions.ZAdviserResponseException;
-import com.bmc.jenkins.zadviser.model.JenkinsDataServiceResponse;
+import com.bmc.jenkins.zadviser.model.CombinedRunData;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -13,20 +13,17 @@ public class DataTransmitService {
     private static final HttpClient HTTP_CLIENT =
             HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
 
-    public static void transmitData(String url, JenkinsDataServiceResponse jenkinsDataServiceResponse)
+    public static void transmitData(String url, CombinedRunData jenkinsDataServiceResponse)
             throws ZAdviserResponseException {
         String payloadStr = getPayloadStr(jenkinsDataServiceResponse);
 
         transmitDataToZAdviser(url, payloadStr);
     }
 
-    private static String getPayloadStr(JenkinsDataServiceResponse jenkinsDataServiceResponse) {
-        JSONObject payload = new JSONObject();
-        payload.put("buildData", new JSONObject(jenkinsDataServiceResponse.buildData()));
-        payload.put("nodeStageData", jenkinsDataServiceResponse.nodeStageDataArray());
-        payload.put("teamHash", jenkinsDataServiceResponse.teamHash());
-        String testResult = jenkinsDataServiceResponse.testResult();
-
+    private static String getPayloadStr(CombinedRunData jenkinsDataServiceResponse) {
+        JSONObject payload = new JSONObject(jenkinsDataServiceResponse);
+        payload.put("buildData", new JSONObject(jenkinsDataServiceResponse));
+        String testResult = jenkinsDataServiceResponse.getTestData();
         if (testResult != null) {
             payload.put("testData", new JSONObject(testResult));
         }

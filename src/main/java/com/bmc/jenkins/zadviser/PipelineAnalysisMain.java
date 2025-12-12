@@ -7,7 +7,7 @@ import com.bmc.jenkins.zadviser.exceptions.JenkinsResponseException;
 import com.bmc.jenkins.zadviser.exceptions.MissingConfigException;
 import com.bmc.jenkins.zadviser.exceptions.MissingDataException;
 import com.bmc.jenkins.zadviser.exceptions.ZAdviserResponseException;
-import com.bmc.jenkins.zadviser.model.JenkinsDataServiceResponse;
+import com.bmc.jenkins.zadviser.model.CombinedRunData;
 import com.bmc.jenkins.zadviser.model.PluginConfiguration;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
@@ -31,7 +31,7 @@ public class PipelineAnalysisMain extends RunListener<Run<?, ?>> {
             PluginConfiguration config = PluginConfiguration.get();
             validateConfiguration(config, listener);
 
-            JenkinsDataServiceResponse jenkinsDataServiceResponse = getJenkinsData(
+            CombinedRunData jenkinsDataServiceResponse = getJenkinsData(
                     run,
                     config.getUsername(),
                     config.getToken().getPlainText(),

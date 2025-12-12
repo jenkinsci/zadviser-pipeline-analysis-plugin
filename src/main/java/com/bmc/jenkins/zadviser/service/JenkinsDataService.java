@@ -2,7 +2,8 @@ package com.bmc.jenkins.zadviser.service;
 
 import com.bmc.jenkins.zadviser.exceptions.JenkinsResponseException;
 import com.bmc.jenkins.zadviser.exceptions.MissingDataException;
-import com.bmc.jenkins.zadviser.model.JenkinsDataServiceResponse;
+import com.bmc.jenkins.zadviser.model.CombinedRunData;
+import com.cloudbees.workflow.rest.external.RunExt;
 import hudson.model.Run;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,13 +13,13 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.Optional;
 import jenkins.model.Jenkins;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
 public class JenkinsDataService {
-    public static JenkinsDataServiceResponse getJenkinsData(
+    public static CombinedRunData getJenkinsData(
             Run<?, ?> run, String jenkinsUsername, String jenkinsToken, String teamHash)
             throws IOException, JenkinsResponseException, MissingDataException {
         Jenkins jenkinsInstance = Jenkins.getInstanceOrNull();
@@ -28,55 +29,44 @@ public class JenkinsDataService {
         String jobName = run.getParent().getName().replace(" ", "%20");
         int buildNumber = run.getNumber();
 
-        String apiUrl = jenkinsUrl + "job/" + jobName + "/" + buildNumber + "/api/json";
-        String wfApiUrl = jenkinsUrl + "job/" + jobName + "/" + buildNumber + "/wfapi/describe";
         String testReportUrl = jenkinsUrl + "job/" + jobName + "/" + buildNumber + "/testReport/api/json";
 
-        Optional<String> buildData = callJenkinsAPI(apiUrl, jenkinsUsername, jenkinsToken);
-        Optional<String> stageDescribe = callJenkinsAPI(wfApiUrl, jenkinsUsername, jenkinsToken);
         Optional<String> testResult = callJenkinsAPI(testReportUrl, jenkinsUsername, jenkinsToken);
 
-        if (buildData.isEmpty()) {
-            throw new MissingDataException("Build data");
-        }
-        if (stageDescribe.isEmpty()) {
-            throw new MissingDataException("Stage data");
-        }
+        // Populate one big happy object with all the details
+        // required including build and stage data
+        // test data is excluded from this to reduce enforcing
+        // of the JUnit plugin
+        RunExt stageData = RunExt.create((WorkflowRun) run);
 
-        JSONArray nodeStageDataArr =
-                prepareStageData(stageDescribe.get(), jenkinsUrl, jobName, buildNumber, jenkinsUsername, jenkinsToken);
-
-        return new JenkinsDataServiceResponse(
-                teamHash, nodeStageDataArr, buildData.get(), stageDescribe.get(), testResult.orElse(null));
+        return getCombinedRunData(teamHash, run, stageData, testResult.orElse(null));
     }
 
-    private static JSONArray prepareStageData(
-            String stageDescribe,
-            String jenkinsUrl,
-            String jobName,
-            int buildNumber,
-            String jenkinsUser,
-            String jenkinsToken)
-            throws IOException, JenkinsResponseException, MissingDataException {
-        JSONObject wfObj = new JSONObject(stageDescribe);
-        JSONArray stages = wfObj.getJSONArray("stages");
-        JSONArray nodeStageDataArr = new JSONArray();
+    private static CombinedRunData getCombinedRunData(
+            String teamHash, Run<?, ?> run, RunExt stageData, String testResult) {
+        CombinedRunData data = new CombinedRunData();
+        data.setTeamHash(teamHash);
+        data.setFullDisplayName(run.getFullDisplayName());
+        data.setCauses(run.getCauses());
+        data.setDescription(run.getDescription());
+        data.setDisplayName(run.getDisplayName());
+        data.setUrl(run.getUrl());
+        data.setChangeSets(((WorkflowRun) run).getChangeSets());
+        data.setCulprits(((WorkflowRun) run).getCulprits());
+        data.setEstimatedDuration(run.getEstimatedDuration());
+        data.setNumber(run.getNumber());
+        data.setQueueId(run.getQueueId());
+        data.setTimestamp(run.getTimestamp().getTimeInMillis());
 
-        for (int i = 0; i < stages.length(); i++) {
-            JSONObject stage = stages.getJSONObject(i);
-            String nodeId = stage.getString("id");
-            String nodeApiUrl =
-                    jenkinsUrl + "job/" + jobName + "/" + buildNumber + "/execution/node/" + nodeId + "/wfapi/describe";
-            Optional<String> nodeData = callJenkinsAPI(nodeApiUrl, jenkinsUser, jenkinsToken);
-            JSONObject nodeObj = new JSONObject();
-            nodeObj.put("nodeId", nodeId);
+        data.setName(stageData.getName());
+        data.setId(stageData.getId());
+        data.setResult(Objects.requireNonNull(run.getResult()).toString());
+        data.setDuration(stageData.getDurationMillis());
 
-            if (nodeData.isEmpty()) throw new MissingDataException("Stage" + nodeApiUrl);
+        data.setStageData(stageData.getStages());
 
-            nodeObj.put("data", new JSONObject(nodeData.get()));
-            nodeStageDataArr.put(nodeObj);
-        }
-        return nodeStageDataArr;
+        data.setTestData(testResult);
+        return data;
     }
 
     private static Optional<String> callJenkinsAPI(String apiUrl, String jenkinsUser, String jenkinsToken)
