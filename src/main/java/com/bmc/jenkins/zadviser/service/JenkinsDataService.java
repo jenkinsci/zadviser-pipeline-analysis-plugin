@@ -13,15 +13,11 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class JenkinsDataService {
-    private static final Logger LOGGER = Logger.getLogger(JenkinsDataService.class.getName());
-
     public static JenkinsDataServiceResponse getJenkinsData(
             Run<?, ?> run, String jenkinsUsername, String jenkinsToken, String teamHash)
             throws IOException, JenkinsResponseException, MissingDataException {
@@ -90,8 +86,6 @@ public class JenkinsDataService {
         String auth =
                 Base64.getEncoder().encodeToString((jenkinsUser + ":" + jenkinsToken).getBytes(StandardCharsets.UTF_8));
         conn.setRequestProperty("Authorization", "Basic " + auth);
-        LOGGER.log(Level.SEVERE, String.valueOf(conn.getURL()));
-        LOGGER.log(Level.SEVERE, jenkinsUser + " " + jenkinsToken);
         return readResponse(conn);
     }
 
