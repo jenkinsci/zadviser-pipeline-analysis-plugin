@@ -15,6 +15,7 @@ import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
 @Extension
 public class PipelineAnalysisMain extends RunListener<Run<?, ?>> {
@@ -22,10 +23,17 @@ public class PipelineAnalysisMain extends RunListener<Run<?, ?>> {
 
     @Override
     public void onCompleted(Run<?, ?> run, @NonNull TaskListener listener) {
+        if (!(run instanceof WorkflowRun)) {
+            listener.getLogger()
+                    .println(
+                            "[zAdviser Pipeline Analysis Plugin]: Since this is not a pipeline job, no data will be transferred to zAdviser");
+
+            return;
+        }
+
         listener.getLogger()
                 .println("[zAdviser Pipeline Analysis Plugin]: Build Completed: " + run.getFullDisplayName()
                         + "starting data transfer to zAdviser");
-
         try {
             PluginConfiguration config = PluginConfiguration.get();
             validateConfiguration(config);
@@ -53,8 +61,7 @@ public class PipelineAnalysisMain extends RunListener<Run<?, ?>> {
         }
     }
 
-    private void validateConfiguration(PluginConfiguration config)
-            throws MissingConfigException {
+    private void validateConfiguration(PluginConfiguration config) throws MissingConfigException {
         if (config == null) throw new MissingConfigException("Entire Configuration Object");
 
         String username = config.getUsername();
