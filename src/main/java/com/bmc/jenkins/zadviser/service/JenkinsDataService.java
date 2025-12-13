@@ -1,27 +1,29 @@
 package com.bmc.jenkins.zadviser.service;
 
-import com.bmc.jenkins.zadviser.exceptions.JenkinsResponseException;
 import com.bmc.jenkins.zadviser.exceptions.MissingDataException;
 import com.bmc.jenkins.zadviser.model.CombinedRunData;
 import com.cloudbees.workflow.rest.external.RunExt;
+import hudson.ProxyConfiguration;
 import hudson.model.Run;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import hudson.model.TaskListener;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
 public class JenkinsDataService {
+    private static final Logger LOGGER = Logger.getLogger(JenkinsDataService.class.getName());
+
     public static CombinedRunData getJenkinsData(
-            Run<?, ?> run, String jenkinsUsername, String jenkinsToken, String teamHash)
-            throws IOException, JenkinsResponseException, MissingDataException {
+            Run<?, ?> run, String jenkinsUsername, String jenkinsToken, String teamHash, TaskListener listener)
+            throws MissingDataException {
         Jenkins jenkinsInstance = Jenkins.getInstanceOrNull();
         if (jenkinsInstance == null) throw new MissingDataException("Jenkins Instance Setup");
         String jenkinsUrl = jenkinsInstance.getRootUrl();
@@ -31,7 +33,7 @@ public class JenkinsDataService {
 
         String testReportUrl = jenkinsUrl + "job/" + jobName + "/" + buildNumber + "/testReport/api/json";
 
-        Optional<String> testResult = callJenkinsAPI(testReportUrl, jenkinsUsername, jenkinsToken);
+        String testResult = callJenkinsAPI(testReportUrl, jenkinsUsername, jenkinsToken, listener);
 
         // Populate one big happy object with all the details
         // required including build and stage data
@@ -39,7 +41,7 @@ public class JenkinsDataService {
         // of the JUnit plugin
         RunExt stageData = RunExt.create((WorkflowRun) run);
 
-        return getCombinedRunData(teamHash, run, stageData, testResult.orElse(null));
+        return getCombinedRunData(teamHash, run, stageData, testResult);
     }
 
     private static CombinedRunData getCombinedRunData(
@@ -69,30 +71,31 @@ public class JenkinsDataService {
         return data;
     }
 
-    private static Optional<String> callJenkinsAPI(String apiUrl, String jenkinsUser, String jenkinsToken)
-            throws IOException, JenkinsResponseException {
-        HttpURLConnection conn = (HttpURLConnection) new URL(apiUrl).openConnection();
-        conn.setRequestMethod("GET");
-        String auth =
-                Base64.getEncoder().encodeToString((jenkinsUser + ":" + jenkinsToken).getBytes(StandardCharsets.UTF_8));
-        conn.setRequestProperty("Authorization", "Basic " + auth);
-        return readResponse(conn);
-    }
+    private static String callJenkinsAPI(
+            String apiUrl, String jenkinsUser, String jenkinsToken, TaskListener listener) {
+        try {
+            HttpClient client = ProxyConfiguration.newHttpClientBuilder().build();
 
-    private static Optional<String> readResponse(HttpURLConnection conn) throws IOException, JenkinsResponseException {
-        int status = conn.getResponseCode();
-        InputStream inputStream = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            String auth = Base64.getEncoder()
+                    .encodeToString((jenkinsUser + ":" + jenkinsToken).getBytes(StandardCharsets.UTF_8));
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(apiUrl))
+                    .GET()
+                    .header("Authorization", "Basic " + auth)
+                    .build();
 
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            StringBuilder response = new StringBuilder();
-            String line;
-            while ((line = in.readLine()) != null) {
-                response.append(line);
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) return response.body();
+            else if (response.statusCode() == 403) {
+                listener.getLogger()
+                        .println(
+                                "[zAdviser Pipeline Analysis Plugin]: Jenkins server status 403 while trying to fetch test data, please check your auth credentials, Jenkins URL, and proxy setup");
             }
-            if (status == 404) return Optional.empty();
-            else if (status > 400) throw new JenkinsResponseException(status, response.toString());
-
-            return Optional.of(response.toString());
+            return null;
+        } catch (Exception e) {
+            listener.getLogger().println("[zAdviser Pipeline Analysis Plugin]: Error fetching test data: " + e);
+            LOGGER.log(Level.WARNING, "[zAdviser Pipeline Analysis Plugin] Unknown error stack trace: ", e);
+            return null;
         }
     }
 }

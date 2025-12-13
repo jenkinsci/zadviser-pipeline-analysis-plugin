@@ -3,7 +3,6 @@ package com.bmc.jenkins.zadviser;
 import static com.bmc.jenkins.zadviser.service.DataTransmitService.transmitData;
 import static com.bmc.jenkins.zadviser.service.JenkinsDataService.getJenkinsData;
 
-import com.bmc.jenkins.zadviser.exceptions.JenkinsResponseException;
 import com.bmc.jenkins.zadviser.exceptions.MissingConfigException;
 import com.bmc.jenkins.zadviser.exceptions.MissingDataException;
 import com.bmc.jenkins.zadviser.exceptions.ZAdviserResponseException;
@@ -29,13 +28,14 @@ public class PipelineAnalysisMain extends RunListener<Run<?, ?>> {
 
         try {
             PluginConfiguration config = PluginConfiguration.get();
-            validateConfiguration(config, listener);
+            validateConfiguration(config);
 
             CombinedRunData jenkinsDataServiceResponse = getJenkinsData(
                     run,
                     config.getUsername(),
                     config.getToken().getPlainText(),
-                    config.getTeamHash().getPlainText());
+                    config.getTeamHash().getPlainText(),
+                    listener);
 
             transmitData(config.getzAdviserURL(), jenkinsDataServiceResponse);
         } catch (ZAdviserResponseException e) {
@@ -45,13 +45,6 @@ public class PipelineAnalysisMain extends RunListener<Run<?, ?>> {
             listener.getLogger()
                     .println(
                             "[zAdviser Pipeline Analysis Plugin]: Please check the zAdviser server logs for more information");
-        } catch (JenkinsResponseException e) {
-            listener.getLogger()
-                    .println("[zAdviser Pipeline Analysis Plugin]: Jenkins server responded with error: "
-                            + e.getStatusCode() + " " + e.getResponseBody());
-            listener.getLogger()
-                    .println(
-                            "[zAdviser Pipeline Analysis Plugin]: Please check the pipeline logs for more information");
         } catch (MissingDataException | MissingConfigException e) {
             listener.getLogger().println("[zAdviser Pipeline Analysis Plugin]: " + e.getMessage());
         } catch (Exception e) {
@@ -60,7 +53,7 @@ public class PipelineAnalysisMain extends RunListener<Run<?, ?>> {
         }
     }
 
-    private void validateConfiguration(PluginConfiguration config, @NonNull TaskListener listener)
+    private void validateConfiguration(PluginConfiguration config)
             throws MissingConfigException {
         if (config == null) throw new MissingConfigException("Entire Configuration Object");
 
