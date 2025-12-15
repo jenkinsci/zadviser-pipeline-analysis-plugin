@@ -1,12 +1,14 @@
 package com.bmc.jenkins.zadviser.service;
 
 import com.bmc.jenkins.zadviser.exceptions.MissingDataException;
+import com.bmc.jenkins.zadviser.model.ChangeSetDTO;
 import com.bmc.jenkins.zadviser.model.CombinedRunData;
 import com.bmc.jenkins.zadviser.model.FailedTestCaseDTO;
 import com.cloudbees.workflow.rest.external.RunExt;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import hudson.PluginWrapper;
+import hudson.model.Cause;
 import hudson.model.Run;
+import hudson.scm.ChangeLogSet;
 import hudson.tasks.junit.CaseResult;
 import hudson.tasks.junit.TestResultAction;
 import java.util.ArrayList;
@@ -16,8 +18,7 @@ import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
 public class JenkinsDataService {
-    public static CombinedRunData getJenkinsData(Run<?, ?> run, String teamHash)
-            throws MissingDataException, JsonProcessingException {
+    public static CombinedRunData getJenkinsData(Run<?, ?> run, String teamHash) throws MissingDataException {
         Jenkins jenkinsInstance = Jenkins.getInstanceOrNull();
         if (jenkinsInstance == null) throw new MissingDataException("Jenkins Instance Setup");
 
@@ -66,16 +67,29 @@ public class JenkinsDataService {
             Integer failCount,
             Integer skipCount,
             Integer totalCount,
-            List<FailedTestCaseDTO> failedTestCases)
-            throws JsonProcessingException {
+            List<FailedTestCaseDTO> failedTestCases) {
         CombinedRunData data = new CombinedRunData();
         data.setTeamHash(teamHash);
         data.setFullDisplayName(run.getFullDisplayName());
-        data.setCauses(run.getCauses());
+
+        List<String> causes = new ArrayList<>();
+        for (Cause cause : run.getCauses()) {
+            causes.add(cause.getShortDescription());
+        }
+        data.setCauses(causes);
+
         data.setDisplayName(run.getDisplayName());
         data.setUrl(run.getUrl());
-        data.setChangeSets(((WorkflowRun) run).getChangeSets());
-        data.setCulprits(((WorkflowRun) run).getCulprits());
+
+        List<ChangeSetDTO> changeSet = new ArrayList<>();
+        for (ChangeLogSet<? extends ChangeLogSet.Entry> changeSetItem : ((WorkflowRun) run).getChangeSets()) {
+            for (ChangeLogSet.Entry item : changeSetItem) {
+                changeSet.add(
+                        new ChangeSetDTO(item.getCommitId(), item.getAuthor().getFullName(), item.getMsg()));
+            }
+        }
+        data.setChangeSet(changeSet);
+
         data.setEstimatedDuration(run.getEstimatedDuration());
         data.setNumber(run.getNumber());
         data.setQueueId(run.getQueueId());

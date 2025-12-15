@@ -1,11 +1,7 @@
 package com.bmc.jenkins.zadviser.model;
 
 import com.cloudbees.workflow.rest.external.StageNodeExt;
-import hudson.model.Cause;
-import hudson.model.User;
-import hudson.scm.ChangeLogSet;
 import java.util.List;
-import java.util.Set;
 
 public class CombinedRunData {
     private String fullDisplayName;
@@ -15,9 +11,8 @@ public class CombinedRunData {
     private String id;
     private String result;
 
-    private List<Cause> causes;
-    private List<ChangeLogSet<? extends ChangeLogSet.Entry>> changeSets;
-    private Set<User> culprits;
+    private List<String> causes;
+    private List<ChangeSetDTO> changeSet;
 
     private Long estimatedDuration;
     private Long queueId;
@@ -84,28 +79,20 @@ public class CombinedRunData {
         this.result = result;
     }
 
-    public List<Cause> getCauses() {
+    public List<String> getCauses() {
         return causes;
     }
 
-    public void setCauses(List<Cause> causes) {
+    public void setCauses(List<String> causes) {
         this.causes = causes;
     }
 
-    public List<ChangeLogSet<? extends ChangeLogSet.Entry>> getChangeSets() {
-        return changeSets;
+    public List<ChangeSetDTO> getChangeSet() {
+        return changeSet;
     }
 
-    public void setChangeSets(List<ChangeLogSet<? extends ChangeLogSet.Entry>> changeSets) {
-        this.changeSets = changeSets;
-    }
-
-    public Set<User> getCulprits() {
-        return culprits;
-    }
-
-    public void setCulprits(Set<User> culprits) {
-        this.culprits = culprits;
+    public void setChangeSet(List<ChangeSetDTO> changeSet) {
+        this.changeSet = changeSet;
     }
 
     public Long getEstimatedDuration() {
