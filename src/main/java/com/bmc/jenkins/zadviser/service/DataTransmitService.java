@@ -2,33 +2,23 @@ package com.bmc.jenkins.zadviser.service;
 
 import com.bmc.jenkins.zadviser.exceptions.ZAdviserResponseException;
 import com.bmc.jenkins.zadviser.model.CombinedRunData;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import org.json.JSONObject;
 
 public class DataTransmitService {
     private static final HttpClient HTTP_CLIENT =
             HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
 
     public static void transmitData(String url, CombinedRunData jenkinsDataServiceResponse)
-            throws ZAdviserResponseException {
-        String payloadStr = getPayloadStr(jenkinsDataServiceResponse);
-
+            throws ZAdviserResponseException, JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        String payloadStr = mapper.writeValueAsString(jenkinsDataServiceResponse);
         transmitDataToZAdviser(url, payloadStr);
-    }
-
-    private static String getPayloadStr(CombinedRunData jenkinsDataServiceResponse) {
-        JSONObject payload = new JSONObject(jenkinsDataServiceResponse);
-        payload.put("buildData", new JSONObject(jenkinsDataServiceResponse));
-        String testResult = jenkinsDataServiceResponse.getTestData();
-        if (testResult != null) {
-            payload.put("testData", new JSONObject(testResult));
-        }
-
-        return payload.toString();
     }
 
     private static void transmitDataToZAdviser(String url, String payload) throws ZAdviserResponseException {

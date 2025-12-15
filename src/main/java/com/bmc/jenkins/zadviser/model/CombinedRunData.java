@@ -9,11 +9,9 @@ import java.util.Set;
 
 public class CombinedRunData {
     private String fullDisplayName;
-    private String description;
     private String displayName;
     private String url;
     private String teamHash;
-    private String name;
     private String id;
     private String result;
 
@@ -29,7 +27,12 @@ public class CombinedRunData {
     private Integer number;
 
     private List<StageNodeExt> stageData;
-    private String testData;
+
+    private int passCount;
+    private int failCount;
+    private int skipCount;
+    private int totalCount;
+    private List<FailedTestCaseDTO> failedTestCases;
 
     public CombinedRunData() {}
 
@@ -39,14 +42,6 @@ public class CombinedRunData {
 
     public void setFullDisplayName(String fullDisplayName) {
         this.fullDisplayName = fullDisplayName;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
     }
 
     public String getDisplayName() {
@@ -71,14 +66,6 @@ public class CombinedRunData {
 
     public void setTeamHash(String teamHash) {
         this.teamHash = teamHash;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public String getId() {
@@ -169,11 +156,43 @@ public class CombinedRunData {
         this.stageData = stageData;
     }
 
-    public String getTestData() {
-        return testData;
+    public int getPassCount() {
+        return passCount;
     }
 
-    public void setTestData(String testData) {
-        this.testData = testData;
+    public void setPassCount(int passCount) {
+        this.passCount = passCount;
+    }
+
+    public int getFailCount() {
+        return failCount;
+    }
+
+    public void setFailCount(int failCount) {
+        this.failCount = failCount;
+    }
+
+    public int getSkipCount() {
+        return skipCount;
+    }
+
+    public void setSkipCount(int skipCount) {
+        this.skipCount = skipCount;
+    }
+
+    public int getTotalCount() {
+        return totalCount;
+    }
+
+    public void setTotalCount(int totalCount) {
+        this.totalCount = totalCount;
+    }
+
+    public List<FailedTestCaseDTO> getFailedTestCases() {
+        return failedTestCases;
+    }
+
+    public void setFailedTestCases(List<FailedTestCaseDTO> failedTestCases) {
+        this.failedTestCases = failedTestCases;
     }
 }

@@ -38,12 +38,8 @@ public class PipelineAnalysisMain extends RunListener<Run<?, ?>> {
             PluginConfiguration config = PluginConfiguration.get();
             validateConfiguration(config);
 
-            CombinedRunData jenkinsDataServiceResponse = getJenkinsData(
-                    run,
-                    config.getUsername(),
-                    config.getToken().getPlainText(),
-                    config.getTeamHash().getPlainText(),
-                    listener);
+            CombinedRunData jenkinsDataServiceResponse =
+                    getJenkinsData(run, config.getTeamHash().getPlainText());
 
             transmitData(config.getzAdviserURL(), jenkinsDataServiceResponse);
         } catch (ZAdviserResponseException e) {
@@ -64,14 +60,10 @@ public class PipelineAnalysisMain extends RunListener<Run<?, ?>> {
     private void validateConfiguration(PluginConfiguration config) throws MissingConfigException {
         if (config == null) throw new MissingConfigException("Entire Configuration Object");
 
-        String username = config.getUsername();
         String teamHash = config.getTeamHash().getPlainText();
-        String jenkinsToken = config.getToken().getPlainText();
         String zAdviserURL = config.getzAdviserURL();
 
-        if (username == null || username.isBlank()) throw new MissingConfigException("Jenkins Username");
         if (teamHash.isBlank()) throw new MissingConfigException("Team Hash");
-        if (jenkinsToken.isBlank()) throw new MissingConfigException("Jenkins Auth Token");
         if (zAdviserURL == null || zAdviserURL.isBlank()) throw new MissingConfigException("zAdviser URL");
     }
 }

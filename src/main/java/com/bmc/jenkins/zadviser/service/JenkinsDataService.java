@@ -2,38 +2,51 @@ package com.bmc.jenkins.zadviser.service;
 
 import com.bmc.jenkins.zadviser.exceptions.MissingDataException;
 import com.bmc.jenkins.zadviser.model.CombinedRunData;
+import com.bmc.jenkins.zadviser.model.FailedTestCaseDTO;
 import com.cloudbees.workflow.rest.external.RunExt;
-import hudson.ProxyConfiguration;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import hudson.PluginWrapper;
 import hudson.model.Run;
-import hudson.model.TaskListener;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import hudson.tasks.junit.CaseResult;
+import hudson.tasks.junit.TestResultAction;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
 public class JenkinsDataService {
-    private static final Logger LOGGER = Logger.getLogger(JenkinsDataService.class.getName());
-
-    public static CombinedRunData getJenkinsData(
-            Run<?, ?> run, String jenkinsUsername, String jenkinsToken, String teamHash, TaskListener listener)
-            throws MissingDataException {
+    public static CombinedRunData getJenkinsData(Run<?, ?> run, String teamHash)
+            throws MissingDataException, JsonProcessingException {
         Jenkins jenkinsInstance = Jenkins.getInstanceOrNull();
         if (jenkinsInstance == null) throw new MissingDataException("Jenkins Instance Setup");
-        String jenkinsUrl = jenkinsInstance.getRootUrl();
 
-        String jobName = run.getParent().getName().replace(" ", "%20");
-        int buildNumber = run.getNumber();
+        List<FailedTestCaseDTO> failedTestCases = new ArrayList<>();
+        int passCount = 0;
+        int failCount = 0;
+        int skipCount = 0;
+        int totalCount = 0;
 
-        String testReportUrl = jenkinsUrl + "job/" + jobName + "/" + buildNumber + "/testReport/api/json";
+        List<TestResultAction> testResultActions = run.getActions(TestResultAction.class);
+        if (isJUnitPluginInstalled()) {
+            for (TestResultAction action : testResultActions) {
+                passCount = passCount + action.getResult().getPassCount();
+                failCount = failCount + action.getResult().getFailCount();
+                skipCount = skipCount + action.getResult().getSkipCount();
+                totalCount = totalCount + action.getResult().getTotalCount();
 
-        String testResult = callJenkinsAPI(testReportUrl, jenkinsUsername, jenkinsToken, listener);
+                for (CaseResult test : action.getFailedTests()) {
+                    String suiteName = test.getClassName();
+                    String testName = test.getSimpleName();
+                    String status = test.getStatus().toString();
+                    String errorStackTrace = test.getErrorStackTrace();
+                    String errorDetails = test.getErrorDetails();
+
+                    failedTestCases.add(
+                            new FailedTestCaseDTO(suiteName, testName, errorDetails, errorStackTrace, status));
+                }
+            }
+        }
 
         // Populate one big happy object with all the details
         // required including build and stage data
@@ -41,16 +54,24 @@ public class JenkinsDataService {
         // of the JUnit plugin
         RunExt stageData = RunExt.create((WorkflowRun) run);
 
-        return getCombinedRunData(teamHash, run, stageData, testResult);
+        return getCombinedRunData(
+                teamHash, run, stageData, passCount, failCount, skipCount, totalCount, failedTestCases);
     }
 
     private static CombinedRunData getCombinedRunData(
-            String teamHash, Run<?, ?> run, RunExt stageData, String testResult) {
+            String teamHash,
+            Run<?, ?> run,
+            RunExt stageData,
+            Integer passCount,
+            Integer failCount,
+            Integer skipCount,
+            Integer totalCount,
+            List<FailedTestCaseDTO> failedTestCases)
+            throws JsonProcessingException {
         CombinedRunData data = new CombinedRunData();
         data.setTeamHash(teamHash);
         data.setFullDisplayName(run.getFullDisplayName());
         data.setCauses(run.getCauses());
-        data.setDescription(run.getDescription());
         data.setDisplayName(run.getDisplayName());
         data.setUrl(run.getUrl());
         data.setChangeSets(((WorkflowRun) run).getChangeSets());
@@ -60,42 +81,25 @@ public class JenkinsDataService {
         data.setQueueId(run.getQueueId());
         data.setTimestamp(run.getTimestamp().getTimeInMillis());
 
-        data.setName(stageData.getName());
         data.setId(stageData.getId());
         data.setResult(Objects.requireNonNull(run.getResult()).toString());
         data.setDuration(stageData.getDurationMillis());
 
         data.setStageData(stageData.getStages());
 
-        data.setTestData(testResult);
+        data.setPassCount(passCount);
+        data.setFailCount(failCount);
+        data.setSkipCount(skipCount);
+        data.setTotalCount(totalCount);
+        data.setFailedTestCases(failedTestCases);
         return data;
     }
 
-    private static String callJenkinsAPI(
-            String apiUrl, String jenkinsUser, String jenkinsToken, TaskListener listener) {
-        try {
-            HttpClient client = ProxyConfiguration.newHttpClientBuilder().build();
+    public static boolean isJUnitPluginInstalled() {
+        Jenkins jenkins = Jenkins.getInstanceOrNull();
+        if (jenkins == null) return false;
 
-            String auth = Base64.getEncoder()
-                    .encodeToString((jenkinsUser + ":" + jenkinsToken).getBytes(StandardCharsets.UTF_8));
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(apiUrl))
-                    .GET()
-                    .header("Authorization", "Basic " + auth)
-                    .build();
-
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) return response.body();
-            else if (response.statusCode() == 403) {
-                listener.getLogger()
-                        .println(
-                                "[zAdviser Pipeline Analysis Plugin]: Jenkins server status 403 while trying to fetch test data, please check your auth credentials, Jenkins URL, and proxy setup");
-            }
-            return null;
-        } catch (Exception e) {
-            listener.getLogger().println("[zAdviser Pipeline Analysis Plugin]: Error fetching test data: " + e);
-            LOGGER.log(Level.WARNING, "[zAdviser Pipeline Analysis Plugin] Unknown error stack trace: ", e);
-            return null;
-        }
+        PluginWrapper junit = jenkins.getPluginManager().getPlugin("junit");
+        return junit != null && junit.isActive();
     }
 }
