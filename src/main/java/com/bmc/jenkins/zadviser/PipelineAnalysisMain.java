@@ -42,6 +42,7 @@ public class PipelineAnalysisMain extends RunListener<Run<?, ?>> {
                     getJenkinsData(run, config.getTeamHash().getPlainText());
 
             transmitData(config.getzAdviserURL(), jenkinsDataServiceResponse);
+            listener.getLogger().println("[zAdviser Pipeline Analysis Plugin]: Data transfer complete");
         } catch (ZAdviserResponseException e) {
             listener.getLogger()
                     .println("[zAdviser Pipeline Analysis Plugin]: zAdviser server responded with error: "
