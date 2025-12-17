@@ -28,8 +28,8 @@ public class JenkinsDataService {
         int skipCount = 0;
         int totalCount = 0;
 
-        List<TestResultAction> testResultActions = run.getActions(TestResultAction.class);
         if (isJUnitPluginInstalled()) {
+            List<TestResultAction> testResultActions = run.getActions(TestResultAction.class);
             for (TestResultAction action : testResultActions) {
                 passCount = passCount + action.getResult().getPassCount();
                 failCount = failCount + action.getResult().getFailCount();
