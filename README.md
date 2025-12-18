@@ -21,7 +21,7 @@ The following are required to use this plugin:
 Note: This plugin will be installed automatically when you try to install the analysis plugin. However, since there might be some versioning mismatch causing Jenkins to not load properly after a restart, we recommend manually updating the REST API plugin first.
 ```
 - BMC AMI zAdviser Enterprise On-Prem (v26.04.00 or higher)
-- Optionally for test related data, we require the publishing of test results via the JUnitg publisher ([JUnit Plugin](https://plugins.jenkins.io/junit/))
+- Optionally for test related data, we require the publishing of test results via the JUnit publisher ([JUnit Plugin](https://plugins.jenkins.io/junit/))
 
 ## Configuration
 
